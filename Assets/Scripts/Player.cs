@@ -1,5 +1,4 @@
 using Unity.Mathematics;
-using UnityEditor.Callbacks;
 using UnityEngine;
 
 public class Player : MonoBehaviour
@@ -7,10 +6,17 @@ public class Player : MonoBehaviour
 	Transform t_cache;
 	Transform p_hand;
 	Rigidbody2D rb;
+	TrailRenderer tr;
 
 	[SerializeField] float speed;
 	[SerializeField] float h_offset;
 
+	[SerializeField] float dash_speed;
+	[SerializeField] float dash_duration;
+	[SerializeField] float dash_cooldown;
+	public bool dashing;
+
+	float timer;
 
 	float2 dir;
 	float2 velocity;
@@ -18,22 +24,21 @@ public class Player : MonoBehaviour
 
 	float3 FLIP;
 
-	bool dashing;
-	float dash_duration;
 
 	void Awake()
 	{
 		t_cache = transform;
 		rb = GetComponent<Rigidbody2D>();
+		tr = GetComponent<TrailRenderer>();
 		p_hand = transform.GetChild(0);
 		FLIP = new float3(1f, -1f, 1f);
 		dashing = false;
-		dash_duration = 0;
 	}
 
 	void Start()
 	{
 		Resources.GetInputReader.OnDash += DashAbility;
+		timer = 0;
 	}
 
 	public void SetVelocity(float2 v) => rb.linearVelocity = v;
@@ -43,14 +48,15 @@ public class Player : MonoBehaviour
 		dir = Resources.GetInputReader.GetMoveDirection;
 		velocity = speed * math.normalizesafe(dir);
 
-		dashing = dash_duration > 0;
+		dashing = timer > 0f;
 
 		if (dashing)
 		{
-			dash_duration -= Time.deltaTime;
+			timer -= Time.deltaTime;
 		}
 		else
 		{
+			tr.emitting = false;
 			SetVelocity(velocity);
 		}
 
@@ -81,10 +87,17 @@ public class Player : MonoBehaviour
 
 	}
 
+	void DebugInput()
+	{
+		Debug.Log("PRESSED");
+	}
 	void DashAbility()
 	{
-		dash_duration = 0.5;
-		rb.AddForce(dir * 2f);
+
+		tr.emitting = true;
+		timer = dash_duration;
+		float2 velocity = dir * dash_speed;
+		SetVelocity(velocity);
 	}
 
 	public float3 GetPosition => t_cache.position;
